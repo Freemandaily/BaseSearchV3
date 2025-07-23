@@ -18,8 +18,8 @@ BASE_URL = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 GEMINI_URL =  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 BYBIT_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/bybit/ohlcv'
 BYBIT_TICKER_URL =  'https://bybit-ohlcv2.onrender.com/bybit/tickers'
-# BASESEARCH_LINK_URL = 'https://basesearch.onrender.com/link_search/'
-BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
+BASESEARCH_LINK_URL = 'https://basesearch3.onrender.com/link_search/'
+# BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
 app = FastAPI()
 
 
