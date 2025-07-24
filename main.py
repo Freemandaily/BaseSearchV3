@@ -1,3 +1,5 @@
+from email.policy import default
+from turtle import st
 import requests,re
 import logging
 from fastapi import FastAPI
@@ -17,8 +19,10 @@ GEMINI_API = os.environ.get('GEMINIKEY')
 BASE_URL = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 GEMINI_URL =  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 BYBIT_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/bybit/ohlcv'
+BINANCE_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/binance/ohlcv' # For binance price
+BINANCE_TICKER_URL = 'https://bybit-ohlcv2.onrender.com/binance/tickers'
 BYBIT_TICKER_URL =  'https://bybit-ohlcv2.onrender.com/bybit/tickers'
-BASESEARCH_LINK_URL = 'https://basesearchV3.onrender.com/link_search/'
+BASESEARCH_LINK_URL = 'https://basesearch.onrender.com/link_search/'
 # BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
 app = FastAPI()
 
@@ -322,13 +326,14 @@ async def Process_price_Data(price_data):
     logging.info('Processing Price Data')
     timeframeData = price_data['Timeframe_minute']
     timeframe = list(timeframeData.keys())[0]
-    start_timestamp = price_data['start_time']
+    start_timestamp = int(price_data['start_time'])
+
     end_timestamp = price_data['end_time']
     bybit_price_info = timeframeData[timeframe]
                 # 'lastprice'                                                                    start price
     price_info = [float(price) for data in bybit_price_info for index, price in enumerate(data) if index in [1,2,3,4]]
-    timestamp_info = [timestamp for data in bybit_price_info for index, timestamp in enumerate(data) if index in [0]]
-
+    timestamp_info = [int(timestamp) for data in bybit_price_info for index, timestamp in enumerate(data) if index in [0]]
+    
     if start_timestamp in timestamp_info:
         entry_price = price_info[-1]
         price_info = price_info[:-4]
@@ -397,7 +402,7 @@ async def Fetch_Price(session,params,end_time,limit):
                     if len(prices_info) >= limit:
                         return {'Timeframe_minute':{limit:prices_info},'start_time':params['start_time'],'end_time':end_time}
                     elif searchCount >= expectedSearch:
-                        return prices_info
+                        return {'Timeframe_minute':{limit:prices_info},'start_time':params['start_time'],'end_time':end_time}
                     else:
                         first_entry = price_data[-1]
                         params['end_time'] = first_entry[0]
@@ -409,37 +414,57 @@ async def Fetch_Price(session,params,end_time,limit):
                 logging.error(f'Unable to Fetch Price: code= {response.status }')
                 return {'Error':f'Unable to Fetch Price: code= {response.status }'}
 
-# async def Fetch_Price(session,params,end_time,limit):
-#     logging.info('Fetching Prices')
-#     params['end_time'] = end_time
-#     params['limit'] = limit
-#     # url = 'https://bybit-ohlcv.onrender.com/bybit/ohlcv'
-   
-#     async with session.get(url=BYBIT_OHLCV_URL,params=params) as response:
-#         if response.status == 200:
-#             await asyncio.sleep(4)
-#             result = await response.json()
-#             if result['result']:
-#                 price_data = result['result']['list']
-#                 return {'Timeframe_minute':{limit:price_data},'start_time':params['start_time'],'end_time':end_time}
-#             logging.error(f'Empty Price Data. Check Your Parameters')
-#             return {'Error':f'Empty Price Data. Check Your Parameters'}
-#         logging.error(f'Unable to Fetch Price: code= {response.status }')
-#         return {'Error':f'Unable to Fetch Price: code= {response.status }'}
 
-async def fetch_symbol(symbol:str):
+async def Fetch_Price_Binance(session,params,end_time,limit):
+    logging.info('Fetching Prices (Binance)')
+    searchCount = 0
+    expectedSearch = (limit/1000) + 1
+    params['end_time'] = end_time
+    params['limit'] = limit
+    params['interval'] = '1m'
+    original_start_time = params['start_time']
+    prices_info = []
+    #url = 'https://bybit-ohlcv2.onrender.com/binance/ohlcv'
+    while True:
+        async with session.get(url=BINANCE_OHLCV_URL,params=params) as response:
+            if response.status == 200:
+                await asyncio.sleep(4)
+                result = await response.json()
+                if result:
+                    searchCount += 1
+                    price_data = result
+                    prices_info = prices_info + price_data
+                    
+                    if len(prices_info) >= limit:
+                        return {'Timeframe_minute':{limit:list(reversed(prices_info))},'start_time':original_start_time,'end_time':end_time}
+                       
+                    elif searchCount >= expectedSearch:
+                        return {'Timeframe_minute':{limit:list(reversed(prices_info))},'start_time':original_start_time,'end_time':end_time}
+                    else:
+                        first_entry = price_data[-1]
+                        params['start_time'] = first_entry[0]
+                        continue
+                else:
+                    logging.error(f'Empty Price Data. Check Your Parameters')
+                    return {'Error':f'Empty Price Data. Check Your Parameters'}
+            else:
+                logging.error(f'Unable to Fetch Price: code= {response.status }')
+                return {'Error':f'Unable to Fetch Price: code= {response.status }'}
+
+async def fetch_symbol(symbol:str,url:str) -> str:
     logging.info('Fetcing Symbol From Bybit')
     # url = 'https://bybit-ohlcv.onrender.com/bybit/tickers'
     params = {
         'symbol':symbol
     }
     async with aiohttp.ClientSession() as session:
-        async with session.get(url=BYBIT_TICKER_URL,params=params) as response:
+        async with session.get(url=url,params=params) as response:
             if response.status == 200:
                 result = await response.text()
                 return result[1:-1]
             logging.error(f'Unable to Fetch symbol: code= {response.status }')
-            return {'Error':f'Unable to Fetch symbol: code= {response.status }'}
+            # return {'Error':f'Unable to Fetch symbol: code= {response.status }'}
+
 
 async def time_Convert(time_str:str,timeframe):
     dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
@@ -458,13 +483,24 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
         limits = [timeframes]
         times_tasks = [time_Convert(start_date_time,limit) for limit in limits]
         end_times = await asyncio.gather(*times_tasks)
-    
-    symbol_task = asyncio.create_task(fetch_symbol(symbol))
+
+    Ticker_url_used = None
+    Ticker_url_used = BYBIT_TICKER_URL
+    symbol_task = asyncio.create_task(fetch_symbol(symbol,Ticker_url_used))
     symbol_pair = await symbol_task
     try:
         symbol_error = symbol_pair[1:]
         if symbol_error.startswith('Error'):
-            return {f'${symbol}': 'Not On Bybit'}
+            Ticker_url_used = BINANCE_TICKER_URL
+            symbol_task = asyncio.create_task(fetch_symbol(symbol,Ticker_url_used))
+            symbol_pair = await symbol_task
+            try:
+                symbol_error = symbol_pair[1:]
+                if symbol_error.startswith('Error'):
+                    return {f'${symbol}': 'Not On Exchange'}#'Not On Bybit'}
+            except:
+                pass
+        # added binance price fetch 
     except:
         pass
     params = {
@@ -473,7 +509,10 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
             "start_time": start_time
         }
     async with aiohttp.ClientSession() as session:
-        prices_Fetch = [Fetch_Price(session=session,params=params,end_time=end_times[index],limit=limit) for index, limit in enumerate(limits) ]
+        if Ticker_url_used == BINANCE_TICKER_URL:
+            prices_Fetch = [Fetch_Price_Binance(session=session,params=params,end_time=end_times[index],limit=limit) for index, limit in enumerate(limits) ]
+        else:
+            prices_Fetch = [Fetch_Price(session=session,params=params,end_time=end_times[index],limit=limit) for index, limit in enumerate(limits) ]
         timeframe_Prices = await asyncio.gather(*prices_Fetch)
         Process_price_task = [Process_price_Data(timeframe_price_data) for timeframe_price_data in timeframe_Prices]
         price_infos = await asyncio.gather(*Process_price_task)
