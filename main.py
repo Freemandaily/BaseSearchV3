@@ -259,9 +259,11 @@ async def search_with_link(url:str):
     url = url.lower()
     if url.startswith('https://x.com/'):
         try:
-            tweet_id = url.split('/')[-1]
-            username = url.split('/')[-3]
-            if len(tweet_id) == 19 and isinstance(int(tweet_id),int):
+            tweet_id_search = re.search(r"status/(\d+)",url)
+            # tweet_id = url.split('/')[-1]
+            # username = url.split('/')[-3]
+            if tweet_id_search and len(tweet_id_search.group(1)) == 19:
+                tweet_id = tweet_id_search.group(1)
                 tweet_data = await link_search(tweet_id=tweet_id)
                 return tweet_data
             else:
