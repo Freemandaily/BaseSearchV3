@@ -22,7 +22,7 @@ BYBIT_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/bybit/ohlcv'
 BINANCE_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/binance/ohlcv' # For binance price
 BINANCE_TICKER_URL = 'https://bybit-ohlcv2.onrender.com/binance/tickers'
 BYBIT_TICKER_URL =  'https://bybit-ohlcv2.onrender.com/bybit/tickers'
-BASESEARCH_LINK_URL = 'https://basesearch.onrender.com/link_search/'
+BASESEARCH_LINK_URL = 'https://basesearchV3.onrender.com/link_search/'
 # BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
 app = FastAPI()
 
