@@ -1,5 +1,3 @@
-from email.policy import default
-from turtle import st
 import requests,re
 import logging
 from fastapi import FastAPI
