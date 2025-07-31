@@ -1,3 +1,5 @@
+from email.policy import default
+from turtle import st
 import requests,re
 import logging
 from fastapi import FastAPI
@@ -20,8 +22,9 @@ BYBIT_OHLCV_URL = 'https://bybit-ohlcv-170603173514.europe-west1.run.app/bybit/o
 BINANCE_OHLCV_URL = 'https://bybit-ohlcv-170603173514.europe-west1.run.app/binance/ohlcv' # For binance price
 BINANCE_TICKER_URL = 'https://bybit-ohlcv-170603173514.europe-west1.run.app/binance/tickers'
 BYBIT_TICKER_URL =  'https://bybit-ohlcv-170603173514.europe-west1.run.app/bybit/tickers'
-BASESEARCH_LINK_URL = 'https://basesearchv3-71083952794.europe-west3.run.app/link_search/'
+# BASESEARCH_LINK_URL = 'https://basesearchV3.onrender.com/link_search/'
 # BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
+BASESEARCH_LINK_URL= 'https://basesearchv3-71083952794.europe-west3.run.app/link_search'
 app = FastAPI()
 
 
@@ -53,6 +56,7 @@ async def SearchUserTweet(username:str='Elonmusk',limit:int=10) -> dict:
                             return {username:all_tweets}
                         break
                     for tweet in tweets:
+                        user_folowers = int(tweet.get('author',{}).get('followers'))
                         dt = datetime.strptime(tweet.get("createdAt"), "%a %b %d %H:%M:%S %z %Y")
                         date_utc_plus_one = dt + timedelta(hours=1)
                         # tweet_date = date_utc_plus_one.strftime("%a %b %d %H:%M:%S %z %Y")
@@ -62,16 +66,17 @@ async def SearchUserTweet(username:str='Elonmusk',limit:int=10) -> dict:
                         await asyncio.sleep(5)
 
                         try:
-                            ticker_names = re.findall(ticker_partterns,tweet['text'])
-                            # ticker_names = await asyncio.create_task(GeminiRefine(tweet['text']))
+                            # ticker_names = re.findall(ticker_partterns,tweet['text'])
+                            ticker_names = await asyncio.create_task(GeminiRefine(tweet['text']))
                             contracts  = re.findall(contract_patterns,tweet['text']) 
                         except:
-                            ticker_names = re.findall(ticker_partterns,tweet['text'])
-                            # ticker_names = await asyncio.create_task(GeminiRefine(tweet['text']))
+                            # ticker_names = re.findall(ticker_partterns,tweet['text'])
+                            ticker_names = await asyncio.create_task(GeminiRefine(tweet['text']))
                             contracts  = re.findall(contract_patterns,tweet['text']) 
                         tweet_info = {
-                        'ticker_names':list(set([ticker[1:] for ticker in ticker_names])), # Remove whene gemini is in
+                        'ticker_names':ticker_names,#list(set([ticker[1:] for ticker in ticker_names])), # Remove whene gemini is in
                         'contracts':contracts,
+                        'followers':user_folowers,
                         'date_tweeted':tweet_date[:-3]+':00',
                         }
                         if len(all_tweets) == limit:
@@ -91,7 +96,7 @@ async def SearchUserTweet(username:str='Elonmusk',limit:int=10) -> dict:
                     logging.error(f"Error parsing JSON response: {json_err}")
    
 
-def search(params):
+def search(params:dict,follower_threshold:int|None=None):
     from datetime import timedelta,datetime
     header = {
                 "X-API-Key": API_KEY
@@ -109,12 +114,16 @@ def search(params):
                     return all_tweets
                 break
             for tweet in tweets:
+                user_folowers = int(tweet.get('author',{}).get('followers'))
+                if follower_threshold and user_folowers < follower_threshold:
+                    continue
                 dt = datetime.strptime(tweet.get("createdAt"), "%a %b %d %H:%M:%S %z %Y")
                 date_utc_plus_one = dt + timedelta(hours=1)
                 tweet_date = date_utc_plus_one.strftime("%a %b %d %H:%M:%S %z %Y")
                 tweet_info = {
                     "userName": tweet.get("author", {}).get("userName"),
                     "text": tweet.get("text"),
+                    'followers':user_folowers,
                     "createdAt": tweet_date,
                     'tweet_link': tweet.get('url')
                 }
@@ -134,7 +143,7 @@ def search(params):
         logging.error(f"Error parsing JSON response: {json_err}")
 
 @app.get('/search/{keyword}/{date}')
-def search_tweets(keyword:str,date:str,from_date:str|None = None,limit:int = 1,checkAlive:bool = False):
+def search_tweets(keyword:str,date:str,from_date:str|None = None,time_search:str|None=None,followers_threshold:int|None=None,limit:int = 1,checkAlive:bool = False):
     if from_date:
         keyword = f"{keyword} since:{from_date}"
     EarlyTweets = []
@@ -142,21 +151,36 @@ def search_tweets(keyword:str,date:str,from_date:str|None = None,limit:int = 1,c
         logging.info('Checking if Api is Alive')
         return {'Status':200}
     hour = 0
+    time_hour = 0
+    if time_search:
+        time_hour = int(str(time_search[:2]))
+    
+    if followers_threshold:
+        if followers_threshold < 100:
+            followers_threshold = None
+
     while True:
         hour += 1
-        keyword_date = f"{keyword} until:{date}_{hour}:00:00_UTC"
+        if time_search:
+            time_hour += 1
+
+            keyword_date = f"{keyword} since:{date}_{time_search}_UTC until:{date}_{time_hour}:00:00_UTC"
+           
+        else:
+            keyword_date = f"{keyword} until:{date}_{hour}:00:00_UTC"
+        
         params = {
             "query": keyword_date,
             'cursor':"",
             'hash_next_page':True
             }
         params['query'] = keyword_date
-        if hour == 24:
+        if hour == 24 or time_hour ==24:
             logging.warning("Reached 24 hours limit, stopping search.")
             if all_tweets:
                 break
             return {'Error': 'No tweets found for the given query. Change the keyword or date.'}
-        all_tweets= search(params)
+        all_tweets= search(params,followers_threshold)
         if all_tweets and len(all_tweets) >= limit:
             logging.info(f"Fetched {len(all_tweets)} tweets for keyword: {keyword_date}")
             break
@@ -168,6 +192,8 @@ def search_tweets(keyword:str,date:str,from_date:str|None = None,limit:int = 1,c
 
 
 async def GeminiRefine(tweet_text:str):
+    search_prompt = f'You are an expert at analyzing cryptocurrency-related tweets and news. Based on the context of the provided text, extract the ticker symbol(s) of the main cryptocurrency or token being discussed. If the text focuses on a crypto platform (e.g., an exchange or blockchain) rather than a specific token, identify and return the ticker symbol of the platform’s native token, if applicable (e.g., Telegram → TON, Binance → BNB). If the text mentions a founder, team member, or associate tied to a cryptocurrency or platform, extract the ticker symbol of the specific token associated with them (e.g., Pavel Durov → TON, Vitalik Buterin → ETH, Anatoly Yakovenko → SOL). Use known associations between founders, platforms, and tokens to infer the token even if not explicitly mentioned. If multiple tokens are mentioned, prioritize the token(s) that are the primary focus of the text based on context. If no specific token, platform, or founder is mentioned, or if the focus is unclear, return "None." Only return the ticker symbol(s) (e.g., BTC, ETH, SOL) without additional explanation.'
+   
 
     headers = {
         "x-goog-api-key": GEMINI_API,
@@ -178,8 +204,8 @@ async def GeminiRefine(tweet_text:str):
             {
                 "parts": [
                     {
-                        "text": f'''You are an expert at analyzing cryptocurrency-related tweets. Based on the context of the tweet provided, extract the ticker symbol(s) of the main cryptocurrency or token being discussed. If the tweet focuses on a crypto platform (e.g., an exchange or blockchain) rather than a specific token, identify and return the ticker symbol of the platform’s native token, if applicable. If multiple tokens are mentioned, prioritize the token(s) that are the primary focus of the tweet based on context. If no specific token or platform is mentioned, or if the focus is unclear, return "None." Only return the ticker symbol(s) (e.g., BTC, ETH, SOL) without additional explanation
-                        Tweet:The {tweet_text}'''
+                        "text": f'''{search_prompt}
+                        Tweet: {tweet_text}'''
                     }
                 ]
             }
@@ -192,7 +218,7 @@ async def GeminiRefine(tweet_text:str):
     }
     async with aiohttp.ClientSession() as session:
         
-        async with session.get(url=GEMINI_URL,json=payload,headers=headers,) as response:
+        async with session.post(url=GEMINI_URL,json=payload,headers=headers,) as response:
             if response.status == 200:
                 result = await response.json()
                 token_mentioned = result['candidates'][0]['content']['parts'][0]['text']
