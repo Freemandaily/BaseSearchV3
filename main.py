@@ -94,7 +94,7 @@ async def SearchUserTweet(username:str='Elonmusk',limit:int=10) -> dict:
                     logging.error(f"Error parsing JSON response: {json_err}")
    
 
-def search(params:dict,follower_threshold:int|None=None):
+def search(params:dict,followers_threshold:int|None=None):
     from datetime import timedelta,datetime
     header = {
                 "X-API-Key": API_KEY
@@ -113,7 +113,7 @@ def search(params:dict,follower_threshold:int|None=None):
                 break
             for tweet in tweets:
                 user_folowers = int(tweet.get('author',{}).get('followers'))
-                if follower_threshold and user_folowers < follower_threshold:
+                if followers_threshold and user_folowers < followers_threshold:
                     continue
                 dt = datetime.strptime(tweet.get("createdAt"), "%a %b %d %H:%M:%S %z %Y")
                 date_utc_plus_one = dt + timedelta(hours=1)
