@@ -191,7 +191,7 @@ def search_tweets(keyword:str,date:str,from_date:str|None = None,time_search:str
 
 async def GeminiRefine(tweet_text:str):
     search_prompt = f'You are an expert at analyzing cryptocurrency-related tweets and news. Based on the context of the provided text, extract the ticker symbol(s) of the main cryptocurrency or token being discussed. If the text focuses on a crypto platform (e.g., an exchange or blockchain) rather than a specific token, identify and return the ticker symbol of the platform’s native token, if applicable (e.g., Telegram → TON, Binance → BNB). If the text mentions a founder, team member, or associate tied to a cryptocurrency or platform, extract the ticker symbol of the specific token associated with them (e.g., Pavel Durov → TON, Vitalik Buterin → ETH, Anatoly Yakovenko → SOL). Use known associations between founders, platforms, and tokens to infer the token even if not explicitly mentioned. If multiple tokens are mentioned, prioritize the token(s) that are the primary focus of the text based on context. If no specific token, platform, or founder is mentioned, or if the focus is unclear, return "None." Only return the ticker symbol(s) (e.g., BTC, ETH, SOL) without additional explanation.'
-   
+    logging.info('Requesting for Ticker In Gemini..')
 
     headers = {
         "x-goog-api-key": GEMINI_API,
