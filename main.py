@@ -254,12 +254,12 @@ async def link_search(tweet_id:str):
             ticker_partterns = r'\$[A-Za-z0-9_-]+'
             ticker_names = re.findall(ticker_partterns,tweets[0]['text'])
             contracts  = re.findall(contract_patterns,tweets[0]['text']) 
-            # try:
-            #     ticker_names = await asyncio.create_task(GeminiRefine(tweets[0]['text']))
-            #     contracts  = re.findall(contract_patterns,tweets[0]['text']) 
-            # except:
-            #     ticker_names = await asyncio.create_task(GeminiRefine(tweets['text']))
-            #     contracts  = re.findall(contract_patterns,tweets['text']) 
+            try:
+                ticker_names = await asyncio.create_task(GeminiRefine(tweets[0]['text']))
+                contracts  = re.findall(contract_patterns,tweets[0]['text']) 
+            except:
+                ticker_names = await asyncio.create_task(GeminiRefine(tweets['text']))
+                contracts  = re.findall(contract_patterns,tweets['text']) 
             if not ticker_names and not contracts:
                 return {'Error': 'No Ticker Or Contract Found In This Tweet'}
             tweet_info = {
