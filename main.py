@@ -222,6 +222,7 @@ async def GeminiRefine(tweet_text:str):
                 token_mentioned = result['candidates'][0]['content']['parts'][0]['text']
                 if token_mentioned != 'None':
                     token_mentioned = token_mentioned.split(',')
+                    logging.info(f"Spoted Token(s) are {token_mentioned}")
                     return token_mentioned
                 else:
                     empty = []
