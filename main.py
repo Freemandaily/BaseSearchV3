@@ -12,6 +12,7 @@ logging.basicConfig(
 )
 
 
+RAPID_API_KEY = os.environ.get('RAPID_KEY')
 API_KEY =  os.environ.get('ApiKey')
 GEMINI_API = os.environ.get('GEMINIKEY')
 BASE_URL = "https://api.twitterapi.io/twitter/tweet/advanced_search"
@@ -26,7 +27,129 @@ BASESEARCH_LINK_URL= 'https://basesearchv3-71083952794.europe-west3.run.app/link
 app = FastAPI()
 
 
-@app.get('/SearchUserTweet')
+
+async def _tweet_info(tweet_results:dict)->dict:
+    from datetime import datetime,timedelta
+    try:
+        followers = date_tweeted = tweet_results['result']['core']['user_results']['result']['legacy']['followers_count']
+        
+        date_tweeted = tweet_results['result']['legacy']['created_at']
+        date = datetime.strptime(date_tweeted, "%a %b %d %H:%M:%S %z %Y")
+        date_utc_plus_one = date + timedelta(hours=1)
+        tweet_date = date_utc_plus_one.strftime("%Y-%m-%d %H:%M:%S")
+
+        tweet_content = tweet_results['result']['legacy']['full_text']
+
+        contract_patterns = r'\b(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44}|T[1-9A-HJ-NP-Za-km-z]{33})\b'
+        contracts  = re.findall(contract_patterns,tweet_content) 
+
+        ticker_names = await asyncio.create_task(GeminiRefine(tweet_content))
+
+        tweet_info = {
+            'ticker_names':ticker_names,
+            'contracts':contracts,
+            'followers':followers,
+            'date_tweeted':tweet_date[:-3]+':00',
+            }
+        
+        return tweet_content,tweet_info
+    except:
+        return None,None
+
+
+async def _get_userId(username:str)->int:
+    url = f'https://twitter241.p.rapidapi.com/user?username={username}' 
+    headers = {
+    'x-rapidapi-host': 'twitter241.p.rapidapi.com',
+    'x-rapidapi-key': '43f7a08a3bmshf449f72cea70f4bp16acf0jsnd9d2fd545c6d'
+    }
+    
+    response = requests.get(url=url,headers=headers) 
+    if response.status_code == 200:
+        result =  response.json()
+        user_id = result['result']['data']['user']['result']['rest_id']
+        logging.info('Requested For Username Id')
+        return user_id
+    return None                 
+
+@app.get('/SearchUserTweet') # This endpoint Uses RapidApi to fetch for user Tweets
+async def SearchUserTweet(username:str='zoomerfied',limit:int=10) -> dict:
+    # call function to get userId 
+    userId = await _get_userId(username)
+
+    if userId is None:
+        logging.error('Invalid X Username. Check And Retry!')
+        return {'Error':'Invalid X Username. Check And Retry!'}
+    
+    url = f'https://twitter241.p.rapidapi.com/user-tweets?user={userId}&count=40'
+    headers = {
+        'x-rapidapi-host': 'twitter241.p.rapidapi.com' ,
+        'x-rapidapi-key': RAPID_API_KEY  
+    }
+    params = {'cursor':''}
+    
+    distinct_tweet_verify = []
+    all_tweet_info = []
+
+    while True:
+        
+        response = requests.get(url,headers=headers,params=params)
+        if response.status_code != 200:
+            logging.error(f"Unable To Search For User Tweets! Error Code {response.status_code}")
+            return {"Error":f"Unable To Search For User Tweets! Error Code {response.status_code}"}
+        try:
+            results =  response.json()
+            cursor = results['cursor']['bottom']
+            tweet_container = results['result']['timeline']['instructions']
+            
+            for container in tweet_container:
+                try:
+                    entries_name = list(container.keys())[1]
+                except:
+                    continue
+
+                if entries_name == 'entry':
+                    tweet_results = container['entry']['content']['itemContent']['tweet_results']
+                    
+                    tweet_content,tweet_info = await _tweet_info(tweet_results)
+                    
+                    if tweet_content != None and tweet_content not in distinct_tweet_verify:
+                        distinct_tweet_verify.append(tweet_content)
+                        all_tweet_info.append(tweet_info)
+
+                        if len(all_tweet_info) >= limit:
+                            logging.info('Succesfully Retrived User Tweets Data')
+                            return {username:all_tweet_info}
+                                
+                        all_tweet_info.append(tweet_info)
+                        
+                elif entries_name == 'entries':
+                    tweet_entry = container['entries']
+                    
+                    for entry in tweet_entry:
+                        try:
+                            tweet_results = entry['content']['itemContent']['tweet_results']
+                        except:
+                            pass
+                        
+                        tweet_content,tweet_info = await _tweet_info(tweet_results)
+                    
+                        if tweet_content != None and tweet_content not in distinct_tweet_verify:
+                            distinct_tweet_verify.append(tweet_content)
+
+                            if len(all_tweet_info) >= limit:
+                                logging.info('Succesfully Retrived User Tweets Data')
+                                return {username:all_tweet_info}
+                            
+                            all_tweet_info.append(tweet_info)
+
+            params['cursor'] = cursor
+        except Exception as e:
+            logging.error(f'Unable  To Fetch {username} Tweets! Error Issue:{e}')
+            return {'Error':f'Unable  To Fetch {username} Tweets! Error Issue:{e}'}
+
+
+# @app.get('/SearchUserTweet') # This endpoint Uses twitterapi.com endpoint to fetch user tweets
 async def SearchUserTweet(username:str='Elonmusk',limit:int=10) -> dict:
     logging.info('Searching User Tweets')
     from datetime import timedelta,datetime
@@ -572,7 +695,7 @@ def process_link(tweet_url:str,timeframe:str) ->list:
     reaponse = requests.get(url=BASESEARCH_LINK_URL,params=params)
     result = reaponse.json()
     ticker_names = result['ticker_names']
-    ticker_names =  list(set([ticker[1:] for ticker in ticker_names]))
+    ticker_names =   list({ticker[1:] if ticker.startswith('$') else ticker for ticker in ticker_names})
     tweeted_date = result['date_tweeted'][:-3]+':00'
     
     async def main():
@@ -599,5 +722,6 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
