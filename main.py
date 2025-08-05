@@ -61,7 +61,7 @@ async def _get_userId(username:str)->int:
     url = f'https://twitter241.p.rapidapi.com/user?username={username}' 
     headers = {
     'x-rapidapi-host': 'twitter241.p.rapidapi.com',
-    'x-rapidapi-key': '43f7a08a3bmshf449f72cea70f4bp16acf0jsnd9d2fd545c6d'
+    'x-rapidapi-key': RAPID_API_KEY
     }
     
     response = requests.get(url=url,headers=headers) 
@@ -722,6 +722,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
