@@ -629,6 +629,7 @@ async def time_Convert(time_str:str,timeframe):
 async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -> dict:
     logging.info('Activating Bybit Price Searcher')
     start_time = str(int(time.mktime(time.strptime(start_date_time, "%Y-%m-%d %H:%M:%S"))) * 1000)
+    print(f"start time is {start_date_time} and {start_time}")
     if isinstance(timeframes,list):
         limits = [timeframe for timeframe in timeframes]
         times_tasks = [time_Convert(start_date_time,timeframe) for timeframe in timeframes]
@@ -725,6 +726,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
