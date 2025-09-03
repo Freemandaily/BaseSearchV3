@@ -571,7 +571,7 @@ async def Fetch_Price_Binance(session,params,end_time,limit):
     searchCount = 0
     expectedSearch = (limit/1000) + 1
     params['end_time'] = end_time
-    params['limit'] = limit
+    params['limit'] = limit + 1
     params['interval'] = '1m'
     original_start_time = params['start_time']
     prices_info = []
@@ -612,6 +612,9 @@ async def fetch_symbol(symbol:str,url:str) -> str:
         async with session.get(url=url,params=params) as response:
             if response.status == 200:
                 result = await response.text()
+
+                if result == 'null' or result == None:
+                    return '!Error'
                 return result[1:-1]
             logging.error(f'Unable to Fetch symbol: code= {response.status }')
             # return {'Error':f'Unable to Fetch symbol: code= {response.status }'}
@@ -722,6 +725,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
