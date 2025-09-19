@@ -628,14 +628,9 @@ async def time_Convert(time_str:str,timeframe):
 
 async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -> dict:
     logging.info('Activating Bybit Price Searcher')
-    # from datetime import datetime, timedelta # added newly
-
-    # # original datetime
-    # dt = datetime.strptime(str(start_date_time), "%Y-%m-%d %H:%M:%S")# added newly
-
-    # # add 1 hour
-    # start_date_time = dt + timedelta(hours=1) # added newly
-    start_time = str(int(time.mktime(time.strptime(str(start_date_time), "%Y-%m-%d %H:%M:%S"))) * 1000)
+    
+    start_time = str(int(time.mktime(time.strptime(start_date_time, "%Y-%m-%d %H:%M:%S"))) * 1000)
+    # start_time = str(int(time.mktime(time.strptime(str(start_date_time), "%Y-%m-%d %H:%M:%S"))) * 1000)
     print(f"start time is {start_date_time} and {start_time}")
     if isinstance(timeframes,list):
         limits = [timeframe for timeframe in timeframes]
@@ -725,7 +720,6 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
     timeframes = process_timeframe(timeframe)
     tickers = list(set(tickers.split()))
     start_date_time = str(start_date)
-    print('the first time is ',start_time)
     
     async def main():
         search_tasks = [Bybit_Price_data(symbol=ticker,timeframes=timeframes,start_date_time=start_date_time) for ticker in tickers]
@@ -734,6 +728,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
