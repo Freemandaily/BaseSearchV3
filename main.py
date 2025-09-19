@@ -632,25 +632,25 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
 
     # original datetime
     dt = datetime.strptime(start_date_time, "%Y-%m-%d %H:%M:%S")
-    print( 'new time is',dt)
+    # print( 'new time is',dt)
 
     # add 1 hour
-    st = str(dt + timedelta(hours=1))
-    print(st,'is supposed tobthrow erro')
+    start_date_time = str(dt + timedelta(hours=1))
+    # print(st,'is supposed tobthrow erro')
 
-    if type(st) == type(start_date_time):
-        print('they have same type')
-    else:
-        print('differnt type')
+    # if type(st) == type(start_date_time):
+    #     print('they have same type')
+    # else:
+    #     print('differnt type')
 
     
     start_time = str(int(time.mktime(time.strptime(start_date_time, "%Y-%m-%d %H:%M:%S"))) * 1000)
-    start_timep = str(int(time.mktime(time.strptime(st, "%Y-%m-%d %H:%M:%S"))) * 1000)
+    # start_timep = str(int(time.mktime(time.strptime(st, "%Y-%m-%d %H:%M:%S"))) * 1000)
 
-    if type(start_time) == type(start_timep):
-        print('conve time are same')
-    else:
-        print('here is isseu')
+    # if type(start_time) == type(start_timep):
+    #     print('conve time are same')
+    # else:
+    #     print('here is isseu')
     # start_time = str(int(time.mktime(time.strptime(str(start_date_time), "%Y-%m-%d %H:%M:%S"))) * 1000)
     print(f"start time is {start_date_time} and {start_time}")
     if isinstance(timeframes,list):
@@ -754,6 +754,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
