@@ -720,6 +720,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
     timeframes = process_timeframe(timeframe)
     tickers = list(set(tickers.split()))
     start_date_time = str(start_date)
+    print(start_date_time,'here is time')
     
     async def main():
         search_tasks = [Bybit_Price_data(symbol=ticker,timeframes=timeframes,start_date_time=start_date_time) for ticker in tickers]
@@ -728,6 +729,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
