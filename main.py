@@ -631,10 +631,12 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
     # from datetime import datetime, timedelta
 
     # original datetime
-    # dt = datetime.strptime(start_date_time, "%Y-%m-%d %H:%M:%S")
+    dt = datetime.strptime(start_date_time, "%Y-%m-%d %H:%M:%S")
+    print( 'new time is',dt)
 
     # add 1 hour
-    # start_date_time = dt + timedelta(hours=1)
+    st = dt + timedelta(hours=1)
+    print(st,'is supposed tobthrow erro')
 
     
     start_time = str(int(time.mktime(time.strptime(start_date_time, "%Y-%m-%d %H:%M:%S"))) * 1000)
@@ -741,6 +743,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
