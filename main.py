@@ -653,6 +653,8 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
     Ticker_url_used = BYBIT_TICKER_URL
     symbol_task = asyncio.create_task(fetch_symbol(symbol,Ticker_url_used))
     symbol_pair = await symbol_task
+    print(symbol_pair)
+    
     try:
         symbol_error = symbol_pair[1:]
         if symbol_error.startswith('Error'):
@@ -673,11 +675,13 @@ async def Bybit_Price_data(symbol:str,timeframes:str|list,start_date_time:str) -
             'interval':1,
             "start_time": start_time
         }
+    print(params)
     async with aiohttp.ClientSession() as session:
         if Ticker_url_used == BINANCE_TICKER_URL:
             prices_Fetch = [Fetch_Price_Binance(session=session,params=params,end_time=end_times[index],limit=limit) for index, limit in enumerate(limits) ]
         else:
             prices_Fetch = [Fetch_Price(session=session,params=params,end_time=end_times[index],limit=limit) for index, limit in enumerate(limits) ]
+        print(prices_Fetch)
         timeframe_Prices = await asyncio.gather(*prices_Fetch)
         Process_price_task = [Process_price_Data(timeframe_price_data) for timeframe_price_data in timeframe_Prices]
         price_infos = await asyncio.gather(*Process_price_task)
@@ -737,6 +741,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
