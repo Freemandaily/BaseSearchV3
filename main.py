@@ -22,15 +22,16 @@ BINANCE_OHLCV_URL = 'https://bybit-ohlcv-170603173514.europe-west1.run.app/binan
 BINANCE_TICKER_URL = 'https://bybit-ohlcv-170603173514.europe-west1.run.app/binance/tickers'
 BYBIT_TICKER_URL =  'https://bybit-ohlcv-170603173514.europe-west1.run.app/bybit/tickers'
 
-# BYBIT_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/bybit/ohlcv'
-# BINANCE_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/binance/ohlcv' # For binance price
-# BINANCE_TICKER_URL = 'https://bybit-ohlcv2.onrender.com/binance/tickers'
-# BYBIT_TICKER_URL =  'https://bybit-ohlcv2.onrender.com/bybit/tickers'
+
+BYBIT_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/bybit/ohlcv'
+BINANCE_OHLCV_URL = 'https://bybit-ohlcv2.onrender.com/binance/ohlcv' # For binance price
+BINANCE_TICKER_URL = 'https://bybit-ohlcv2.onrender.com/binance/tickers'
+BYBIT_TICKER_URL =  'https://bybit-ohlcv2.onrender.com/bybit/tickers'
 
 # BASESEARCH_LINK_URL = 'https://basesearchV3.onrender.com/link_search/'
 # BASESEARCH_LINK_URL = 'http://127.0.0.1:8000/link_search/'
 BASESEARCH_LINK_URL= 'https://basesearchv3-71083952794.europe-west3.run.app/link_search/'
-# BASESEARCH_LINK_URL= 'https://basesearchv3.onrender.com/link_search/'
+BASESEARCH_LINK_URL= 'https://basesearchv3.onrender.com/link_search/'
 app = FastAPI()
 
 
@@ -761,6 +762,7 @@ def process_link(tickers:str,start_date:str,timeframe:str) ->list:
         return ticker_price_data
     ticker_price_data = asyncio.run(main())
     return ticker_price_data
+
 
 
 
